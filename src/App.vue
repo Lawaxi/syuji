@@ -11,7 +11,7 @@
         <option value="10">六体</option>
         <option value="12">印谱</option>
       </select>
-      <select v-model="selectedAuthor0">
+      <select v-model="selectedAuthor">
         <option value="all">全部</option>
         <option value="欧阳询">欧阳询</option>
         <option value="颜真卿">颜真卿</option>
@@ -33,7 +33,7 @@
         <option value="启功">启功</option>
         <option value="custom">自定义</option>
       </select>
-      <input v-if="selectedAuthor0 === 'custom'" v-model="customAuthor" @input="updateCustomAuthor" placeholder="输入书家（简体字，以|分隔）" />
+      <input v-if="selectedAuthor === 'custom'" v-model="customAuthor" @input="updateCustomAuthor" placeholder="输入书家（简体字，以|分隔）" />
       <input id="sentence-input" v-model="sentence" placeholder="Enter a sentence..." />
       <button type="submit">検索する</button>
     </form>
@@ -67,19 +67,19 @@ export default {
   setup() {
     const sentence = ref('');
     const selectedFont = ref('1');
-    const selectedAuthor = ref('all');
-    const selectedAuthor0 = ref('all');
+    const author = ref('all');
 
-    watch(selectedAuthor0, () => {
-      if (selectedAuthor0.value !== 'custom') {
-        selectedAuthor.value = selectedAuthor0.value;
+    const selectedAuthor = ref('all');
+    watch(selectedAuthor, () => {
+      if (selectedAuthor.value !== 'custom') {
+        author.value = selectedAuthor.value;
         matchAuthor();
       }
     });
     
     const customAuthor = ref('');
     const updateCustomAuthor = () => {
-      selectedAuthor.value = customAuthor.value;
+      author.value = customAuthor.value;
       // 不支持实时匹配
     };
 
@@ -141,9 +141,8 @@ export default {
     };
 
     const matchSingleAuthor = (authors) => {
-      console.log(selectedAuthor.value)
-      if (selectedAuthor.value !== 'all') {
-        const authorsToMatch = selectedAuthor.value.split('|');
+      if (author.value !== 'all') {
+        const authorsToMatch = author.value.split('|');
         if(authors.length > 0){
             const firstIdx = authors.findIndex(author => {
               return authorsToMatch.some(authorToMatch => author.includes(authorToMatch));
@@ -159,8 +158,8 @@ export default {
     };
 
     const matchAuthor = () => {
-      if (selectedAuthor.value !== 'all') {
-        const authorsToMatch = selectedAuthor.value.split('|');
+      if (author.value !== 'all') {
+        const authorsToMatch = author.value.split('|');
         grid.value.forEach(cell => {
           if(cell.images.length > 0){
             const firstIdx = cell.authors.findIndex(author => {
@@ -180,10 +179,10 @@ export default {
       const cell = grid.value[index];
       if (cell.images.length > 0) {
         const currentIdx = cell.currentImageIndex;
-        if (selectedAuthor.value === 'all' || currentIdx === -1) {
+        if (author.value === 'all' || currentIdx === -1) {
           cell.currentImageIndex = (currentIdx + 1) % cell.images.length;
         } else {
-          const authorsToMatch = selectedAuthor.value.split('|');
+          const authorsToMatch = author.value.split('|');
           const nextIdx = cell.authors
             .slice(currentIdx + 1)
             .findIndex(author => {
@@ -230,8 +229,8 @@ export default {
     return {
       sentence,
       selectedFont,
+      author,
       selectedAuthor,
-      selectedAuthor0,
       customAuthor,
       updateCustomAuthor,
       grid,
@@ -265,7 +264,7 @@ export default {
 .cell {
   position: relative;
   width: 100%;
-  padding-top: 100%; /* Maintain aspect ratio */
+  padding-top: 100%;
   background-color: #f0f0f0;
   display: flex;
   justify-content: center;
@@ -274,6 +273,7 @@ export default {
 }
 
 .cell img {
+  height: 100%;
   max-width: 100%;
   max-height: 100%;
   position: absolute;
@@ -301,16 +301,6 @@ export default {
   opacity: 1;
 }
 </style>
-<style scoped>
-.logo.vite:hover {
-  filter: drop-shadow(0 0 2em #747bff);
-}
-
-.logo.vue:hover {
-  filter: drop-shadow(0 0 2em #249b73);
-}
-
-</style>
 <style>
 :root {
   font-family: Inter, Avenir, Helvetica, Arial, sans-serif;
@@ -330,48 +320,23 @@ export default {
 
 .container {
   margin: 0;
-  padding-top: 10vh;
   display: flex;
   flex-direction: column;
   justify-content: center;
   text-align: center;
 }
 
-.logo {
-  height: 6em;
-  padding: 1.5em;
-  will-change: filter;
-  transition: 0.75s;
-}
-
-.logo.tauri:hover {
-  filter: drop-shadow(0 0 2em #24c8db);
-}
-
 .row {
+  width: 100%;
   display: flex;
   justify-content: center;
 }
 
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-
-a:hover {
-  color: #535bf2;
-}
-
-h1 {
-  text-align: center;
-}
-
 input,
+select,
 button {
   border-radius: 8px;
   border: 1px solid transparent;
-  padding: 0.6em 1.2em;
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
@@ -379,10 +344,13 @@ button {
   background-color: #ffffff;
   transition: border-color 0.25s;
   box-shadow: 0 2px 2px rgba(0, 0, 0, 0.2);
+  min-width: 10px;
 }
 
 button {
   cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 button:hover {
@@ -394,12 +362,9 @@ button:active {
 }
 
 input,
+select,
 button {
   outline: none;
-}
-
-#greet-input {
-  margin-right: 5px;
 }
 
 @media (prefers-color-scheme: dark) {
