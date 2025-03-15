@@ -39,22 +39,29 @@
     </form>
 
     <div class="grid">
-      <div v-for="(cell, index) in grid" :key="index" class="cell" @click="cycleImage(index)">
+      <div v-for="(cell, index) in paginatedGrid" :key="index" class="cell" @click="cycleImage(index)">
         <img
           v-if="cell.images.length > 0"
           :src="cell.currentImageIndex === -1 ? '/tauri.svg' : imageCache[cell.images[cell.currentImageIndex]] || '/vite.svg'"
-          alt="失败"  @load="onImageLoad(cell.images[cell.currentImageIndex])"
+          alt="失败"
+          @load="onImageLoad(cell.images[cell.currentImageIndex])"
         />
-          <div class="author" v-if="cell.authors[cell.currentImageIndex]" v-show="cell.currentImageIndex !== -1">
-            {{ cell.authors[cell.currentImageIndex] }}
-          </div>
+        <div class="author" v-if="cell.authors[cell.currentImageIndex]" v-show="cell.currentImageIndex !== -1">
+          {{ cell.authors[cell.currentImageIndex] }}
+        </div>
       </div>
+    </div>
+
+    <div class="row" style="margin-bottom: 0;">
+      <button @click="prevPage" :disabled="currentPage === 1">上一页</button>
+      <span>第 {{ currentPage }} 页 / 共 {{ totalPages }} 页</span>
+      <button @click="nextPage" :disabled="currentPage === totalPages">下一页</button>
     </div>
   </div>
 </template>
 
 <script>
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import { invoke } from '@tauri-apps/api/core';
 import * as OpenCC from 'opencc-js';
 
@@ -86,9 +93,10 @@ export default {
     const grid = ref(Array.from({ length: 18 }, () => ({ images: [], authors: [], currentImageIndex: 0 })));
 
     const search = async () => {
-      grid.value = Array.from({ length: 18 }, () => ({ images: [], authors: [], currentImageIndex: 0 }));
+      const characters = [...sentence.value.replace(/\s+/g, '')];
+      let l = Math.floor(characters.length / 18 + 1) * 18;
+      grid.value = Array.from({ length: l }, () => ({ images: [], authors: [], currentImageIndex: 0 }));
 
-      const characters = [...sentence.value];
       for (let i = 0; i < characters.length; i++) {
         const char = characters[i];
         const unicode = char.codePointAt(0).toString(16);
@@ -226,6 +234,30 @@ export default {
       }
     };
 
+    
+    const currentPage = ref(1);
+    const itemsPerPage = 18;
+
+    const totalPages = computed(() => Math.ceil(grid.value.length / itemsPerPage));
+
+    // 计算当前页的 grid 数据
+    const paginatedGrid = computed(() => {
+      const start = (currentPage.value - 1) * itemsPerPage;
+      return grid.value.slice(start, start + itemsPerPage);
+    });
+    
+    const prevPage = () => {
+      if (currentPage.value > 1) {
+        currentPage.value--;
+      }
+    };
+
+    const nextPage = () => {
+      if (currentPage.value < totalPages.value) {
+        currentPage.value++;
+      }
+    };
+
     return {
       sentence,
       selectedFont,
@@ -237,7 +269,12 @@ export default {
       search,
       cycleImage,
       imageCache,
-      onImageLoad
+      onImageLoad,
+      currentPage,
+      totalPages,
+      paginatedGrid,
+      prevPage,
+      nextPage
     };
   },
 };
@@ -259,6 +296,7 @@ export default {
   grid-template-columns: repeat(6, 1fr);
   grid-template-rows: repeat(3, 1fr);
   gap: 10px;
+  margin-bottom: 20px;
 }
 
 .cell {
